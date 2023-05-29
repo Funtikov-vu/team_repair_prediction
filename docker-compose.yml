@@ -9,3 +9,5 @@ services:
     backend:
         build: backend
         restart: always
+        ports:
+            - "8000:8080"

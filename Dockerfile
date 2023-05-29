@@ -32,7 +32,7 @@ COPY . .
 # RUN yarn build
 
 # If using npm comment out above and use below instead
-RUN prisma generate
+# RUN prisma generate
 RUN npm run build
 
 

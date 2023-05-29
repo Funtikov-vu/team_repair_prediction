@@ -1,10 +1,8 @@
-// @ts-nocheck
 import { type NextPage } from "next";
 import { HeaderSimple } from "~/components/HeaderSimple";
 import HeadSimple from "~/components/HeadSimple";
-import { FileInput, Stack, Title, Container, Button, Input } from "@mantine/core";
+import { FileInput, Title, Container, Button, Input, Group, Loader } from "@mantine/core";
 import { useState } from "react";
-import { Form } from "@mantine/form";
 import { useSession } from "next-auth/react";
 import axios from "axios";
 import { useRouter } from "next/router";
@@ -15,6 +13,7 @@ const Data: NextPage = () => {
   const router = useRouter()
   const [dates, setDates] = useState<[Date | null, Date | null]>([null, null]);
   const [projectName, setProjectName] = useState<string>("");
+  const [isButtonClicked, setIsButtonClicked] = useState(false);
 
   if (status === "loading") {
     return <p>Loading...</p>
@@ -30,7 +29,7 @@ const Data: NextPage = () => {
     event.preventDefault()
     const files = event.target
     let body = new FormData();
-
+    setIsButtonClicked(true)
     console.log(event);
     // return;
     for (let index = 0; index < 3; index+=1) {
@@ -41,7 +40,7 @@ const Data: NextPage = () => {
     body.append('dates', JSON.stringify(dates));
     body.append('projectName', projectName);
     console.log(...body);
-    await axios.post("http://127.0.0.1:8000/upload",
+    await axios.post(`${process.env.NEXT_PUBLIC_BACKEND_URL}/upload`,
       body,
       {
         headers: {
@@ -95,9 +94,12 @@ const Data: NextPage = () => {
             <Input id="input-demo" value={projectName} onChange={(event) => setProjectName(event.currentTarget.value)} />
           </Input.Wrapper>
           <DatePicker type="range" value={dates} onChange={setDates} />
-          <Button type="submit">
-            Отправить
-          </Button>
+          <Group>
+            <Button type="submit">
+              Отправить
+            </Button>
+            {isButtonClicked && <Title align="center"><Container><Loader variant="dots" /></Container></Title>}
+          </Group>
         </form>
       </Container>
     </>

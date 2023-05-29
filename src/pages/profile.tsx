@@ -36,7 +36,7 @@ const Profile: NextPage = () => {
   // }, []);
 
   async function onSubmit(event: any) {
-    const result = await axios.get("http://127.0.0.1:8000/files",
+    const result = await axios.get(`${process.env.NEXT_PUBLIC_BACKEND_URL}/files`,
       {
         headers: {
           'Accept': 'text',

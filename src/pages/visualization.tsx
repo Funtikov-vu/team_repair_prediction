@@ -1,53 +1,25 @@
 import axios from "axios";
-import { NextComponentType, type NextPage } from "next";
+import { type NextPage } from "next";
 import { useRouter } from "next/router";
 import { HeaderSimple } from "~/components/HeaderSimple";
 import HeadSimple from "~/components/HeadSimple";
 import Papa from "papaparse";
-import { Accordion, Box, Button, Container, Divider, Flex, Grid, Group, List, Loader, Modal, MultiSelect, RangeSlider, ScrollArea, Stack, Switch, Text } from "@mantine/core";
-import { PropsWithChildren, use, useEffect, useState } from "react";
-import React, { Component } from 'react';
-import { GoogleMap, InfoWindow, LoadScript, Marker, MarkerF, HeatmapLayerF, HeatmapLayer } from '@react-google-maps/api';
-import { set } from "zod";
-import fileDownload from 'js-file-download'
-import Script from "next/script";
+import { Accordion, Button, Container, Divider, Grid, Group, List, Loader, MultiSelect, RangeSlider, ScrollArea, Stack, Switch, Text, Title } from "@mantine/core";
+import { useEffect, useState } from "react";
+import React from 'react';
+import { GoogleMap, InfoWindow, LoadScript, MarkerF } from '@react-google-maps/api';
 import { useSession } from "next-auth/react";
-import { CSVLink, CSVDownload } from 'react-csv';
+import { CSVLink } from 'react-csv';
+import filters from '../data/filters.json';
+import jobs from '../data/jobs.json';
 
-
-const fetcher = (url: string) => axios.get(url).then(res => res.data)
 
 const alertFeature: string = "appeals_count";
 const alertFeatureThreshold: number = 0;
 
-const jobList = ['замена лифтового оборудования',
-  'ремонт внутридомовых инженерных систем водоотведения (канализации) (выпуски и сборные трубопроводы)',
-  'ремонт внутридомовых инженерных систем теплоснабжения (разводящие магистрали)',
-  'ремонт внутридомовых инженерных систем холодного водоснабжения (разводящие магистрали)',
-  'ремонт внутридомовых инженерных систем горячего водоснабжения (разводящие магистрали)',
-  'ремонт подвальных помещений, относящихся к общему имуществу в многоквартирном доме',
-  'ремонт внутридомовых инженерных систем газоснабжения',
-  'ремонт подъездов, направленный на восстановление их надлежащего состояния и проводимый при выполнении иных работ по капитальному ремонту общего имущества в многоквартирном доме',
-  'ремонт фасадов', 'ремонт крыши',
-  'ремонт внутридомовых инженерных систем электроснабжения',
-  'ремонт мусоропровода',
-  'замена оконных блоков, расположенных в помещениях общего пользования',
-  'ремонт внутридомовых инженерных систем горячего водоснабжения (стояки)',
-  'ремонт пожарного водопровода',
-  'ремонт внутридомовых инженерных систем теплоснабжения (стояки)',
-  'ремонт внутридомовых инженерных систем холодного водоснабжения (стояки)',
-  'ремонт внутреннего водостока',
-  'ремонт внутридомовых инженерных систем водоотведения (канализации) (стояки)'].map((item) => {
+const jobList = jobs.map((item) => {
     return { label: item.substring(0, 100), value: item }}).sort((a, b) => a.label.localeCompare(b.label));
 
-let filters = {
-  'rjvvf': { 'type': 'float', 'bounds': [0, 9] },
-  'rvvjv': { 'type': 'float', 'bounds': [0, 9] },
-  'kfirr': { 'type': 'float', 'bounds': [0, 9] },
-  'r cjv': { 'type': 'string', 'bounds': ['CCC', 'BBB', 'AAA'] },
-  'jffcc': { 'type': 'string', 'bounds': ['CCC', 'BBB', 'AAA'] },
-  'ijrrj': { 'type': 'string', 'bounds': ['CCC', 'BBB', 'AAA'] }
-};
 //convert filters to array
 const filtersArray = Object.keys(filters).map((key) => {
   return { name: key, type: filters[key].type, bounds: filters[key].bounds }
@@ -123,7 +95,6 @@ const Mapss: any = ({ result, setResult, reloadFlag, setReloadFlag, projectName 
     );
   });
 
-  // const [switches, setSwitches] = useState(filters
 
 
   const switchElements = filtersArray.map((filter) => {
@@ -150,7 +121,6 @@ const Mapss: any = ({ result, setResult, reloadFlag, setReloadFlag, projectName 
     setSelectedCenter(null);
     setChanges(changes.filter((item: any) => item.unom !== unom).concat({ unom: unom, target: [] }));
     setAlertIgnore(0);
-    // setReloadFlag(!reloadFlag);
   }
 
   const deleteJob = (unom: number, target: string) => {
@@ -171,13 +141,6 @@ const Mapss: any = ({ result, setResult, reloadFlag, setReloadFlag, projectName 
     setJobsToAdd([]);
   }
 
-  // const objectList = result.map((item: any) => (
-  //   <Group key={item.unom}>
-  //     {item.description}
-  //     <Button onClick={() => deleteElement(item.unom)}>Удалить обект</Button>
-  //   </Group>
-  // ));
-
   //object list with accordion
   const objectList = filteredResults.map((item: any) => (
     <Accordion.Item value={"f" + item.unom}>
@@ -186,7 +149,7 @@ const Mapss: any = ({ result, setResult, reloadFlag, setReloadFlag, projectName 
         {//print all attributes of selected object
           Object.keys(item).map((key) => {
             if (key === 'target') {
-              return <><b>{key}</b>:<List>
+              return <><b>работы</b>:<List>
                 {item[key].map((target: string) => { 
                   return <List.Item><Stack spacing="xs" align="flex-start">
                     {target} 
@@ -198,7 +161,6 @@ const Mapss: any = ({ result, setResult, reloadFlag, setReloadFlag, projectName 
               <Stack align="flex-start">
                   <MultiSelect data={jobList.filter((job) => !item[key].includes(job.value))
                   } value={jobsToAdd} onChange={setJobsToAdd} dropdownPosition="bottom"
-                    placeholder="Выберите работы, которые нужно добавить"
                     label="Выберите работы, которые, на ваш взгляд, следует добавить &nbsp; &nbsp; &nbsp;"
                   />
                 <Button onClick={() => {addJobs(item.unom)}}>Добавить работы</Button>
@@ -219,15 +181,6 @@ const Mapss: any = ({ result, setResult, reloadFlag, setReloadFlag, projectName 
       </Accordion.Panel>
     </Accordion.Item>
   ));
-
-  const handleDownload = (url) => {
-    axios.get(url, {
-      responseType: 'blob',
-    })
-      .then((res) => {
-        fileDownload(res.data, 'results.csv')
-      })
-  }
  
   const [heatmap, setHeatmap] = useState(null); // heatmap html file
   // get heatmap html file from backend and return the html as text 
@@ -246,13 +199,14 @@ const Mapss: any = ({ result, setResult, reloadFlag, setReloadFlag, projectName 
       getHeatmap();
   }, [])
 
-  const downloadCSV = () => {
-    console.log(filteredResults);
+  const uploadCorrectedResults = (e) => {
+    e.preventDefault();
+    const formData = new FormData();
+    //convert result to FormData csv file and append to formData
     const csvRows = [];
-    const headers = Object.keys(filteredResults[0]);
+    const headers = Object.keys(result[0]);
     csvRows.push(headers.join(','));
-
-    for (const row of filteredResults) {
+    for (const row of result) {
       const values = headers.map(header => {
         const val = row[header]
         return `"${val}"`;
@@ -260,28 +214,16 @@ const Mapss: any = ({ result, setResult, reloadFlag, setReloadFlag, projectName 
       csvRows.push(values.join(','));
     }
     const csvBody = csvRows.join('\n');
-
-    console.log(csvBody); 
-
-    const url = window.URL.createObjectURL(
-      new Blob([csvBody]),
-    );
-    const link = document.createElement('a');
-    link.href = url;
-    link.setAttribute(
-      'download',
-      `FileName.pdf`,
-    );
-
-    // Append to html link element page
-    document.body.appendChild(link);
-
-    // Start download
-    link.click();
-
-    // Clean up and remove the link
-    link.parentNode.removeChild(link);
+    formData.append('file', new Blob([csvBody]), 'results.csv');
+    console.log(...formData);
+    //send formData to backend
+    axios.post(`${process.env.NEXT_PUBLIC_BACKEND_URL}/uploadCorrectedResults/${projectName}`, formData, {
+      headers: {
+        'Content-Type': 'text/csv'
+      }
+    })
   }
+
 
 
 
@@ -299,26 +241,18 @@ const Mapss: any = ({ result, setResult, reloadFlag, setReloadFlag, projectName 
         </Grid.Col>
         <Grid.Col span="auto">
           <Container>
+            <Text><h3>Управление</h3></Text>
+            <Group>
+              <CSVLink data={filteredResults} filename="results.csv" 
+                style={{ textDecoration: "none", color: "white" }} onclick="location.href='#'"><Button>Скачать CSV</Button></CSVLink>
+              <form onSubmit={uploadCorrectedResults}><Button type="submit">Сохранить на сервере</Button></form>
+            </Group>
+          </Container>
+          <Container>
             <Text><h3>Отключить фактор модели</h3></Text>
             <Stack>
               {switchElements}
             </Stack>
-          </Container>
-        </Grid.Col>
-        <Grid.Col span="auto">
-          <Container>
-            <Text><h3>Управление</h3></Text>
-            <Group>
-              {/* <button onClick={() => {
-                handleDownload('api/getResult')
-              }}>Download Image</button> */}
-              {/* <Button onSubmit={() => {downloadCSV();}}> */}
-                <CSVLink data={filteredResults} filename="results.csv" style={{ textDecoration: "none", color: "white" }} onclick="location.href='#'"><Button>sjdhfg</Button></CSVLink>
-                {/* Скачать CSV */}
-                {/* <a href="api/getResult" download="results.csv" style={{textDecoration: "none", color: "white"}}>Скачать CSV</a> */}
-              {/* </Button> */}
-              <Button>Сохранить на сервере</Button>
-            </Group>
           </Container>
         </Grid.Col>
       </Grid>
@@ -328,7 +262,7 @@ const Mapss: any = ({ result, setResult, reloadFlag, setReloadFlag, projectName 
             {selectedCenter &&
               <Accordion defaultValue="f1">
                 <Accordion.Item value="f1">
-                  <Accordion.Control>{resultObject[selectedCenter.unom].description}</Accordion.Control>
+                <Accordion.Control onClick={() => { setAlertIgnore(0); }}>{resultObject[selectedCenter.unom].description}</Accordion.Control>
                   <Accordion.Panel>
                     {//print all attributes of selected object
                       Object.keys(resultObject[selectedCenter.unom]).map((key) => {
@@ -337,14 +271,16 @@ const Mapss: any = ({ result, setResult, reloadFlag, setReloadFlag, projectName 
                             {resultObject[selectedCenter.unom][key].map((target: string) => {
                               return <List.Item><Stack spacing="xs" align="flex-start">
                                 {target}
-                                <Button onClick={() => deleteJob(resultObject[selectedCenter.unom].unom, target)}>Удалить работу</Button>
+                                <Button onClick={() => deleteJob(selectedCenter.unom, target)}>Удалить работу</Button>
                               </Stack></List.Item>
                             })}
                           </List>
                             <br />
                             <Stack align="flex-start">
                               <MultiSelect data={jobList.filter((job) => !resultObject[selectedCenter.unom][key].includes(job.value))
-                              } value={jobsToAdd} onChange={setJobsToAdd} dropdownPosition="bottom" />
+                              } value={jobsToAdd} onChange={setJobsToAdd} dropdownPosition="bottom"
+                                label="Выберите работы, которые, на ваш взгляд, следует добавить &nbsp; &nbsp; &nbsp;"
+                              />
                               <Button onClick={() => { addJobs(selectedCenter.unom) }}>Добавить работы</Button>
                             </Stack>
                           </>
@@ -356,7 +292,11 @@ const Mapss: any = ({ result, setResult, reloadFlag, setReloadFlag, projectName 
                         }
                       })}
                     <br />
-                    <Button onClick={() => deleteElement(resultObject[selectedCenter.unom].unom)}>Удалить объект</Button>
+                    <Button onClick={() => deleteElement(selectedCenter.unom)}>Удалить объект</Button>
+                    {(alertIgnore == 1) && <Stack>
+                      <Text>Вы уверены, что хотите удалить объект? По нему поступило много жалоб.</Text>
+                      <Button onClick={() => { setAlertIgnore(2); deleteElement(selectedCenter.unom); }}>Удалить объект</Button>
+                    </Stack>}
                   </Accordion.Panel>
                 </Accordion.Item>
                </Accordion>
@@ -402,7 +342,7 @@ const Mapss: any = ({ result, setResult, reloadFlag, setReloadFlag, projectName 
             </GoogleMap>
           </LoadScript>
           <br />
-          <iframe src={"http://127.0.0.1:8000/heatmap/" + projectName} width="80%" height="40%" id={heatmap}></iframe>
+          <iframe src={`${process.env.NEXT_PUBLIC_BACKEND_URL}/heatmap/` + projectName} width="80%" height="40%" id={heatmap}></iframe>
           {/* <div className="text-container" dangerouslySetInnerHTML={{ __html: heatmap }} /> */}
         </Grid.Col>
       </Grid>
@@ -424,18 +364,10 @@ const Visualization: NextPage = () => {
   const resultProps: resultPropsType = { result, setResult };
   const [isLoading, setLoading] = useState(true);
   const [reloadFlag, setReloadFlag] = useState(false);
-  
-  // if (status === "loading") {
-  //   return <p>Loading...</p>
-  // }
-
-  // if (status === "unauthenticated") {
-  //   return <p>Access Denied</p>
-  // }
 
   useEffect(() => {
     async function getResult(projectName: string) {
-      const result = await axios.get(`http://127.0.0.1:8000/result/${projectName}`, {
+      const result = await axios.get(`${process.env.NEXT_PUBLIC_BACKEND_URL}/result/${projectName}`, {
         headers: {
           "Content-Type": "text/tsv",
         },
@@ -461,7 +393,7 @@ const Visualization: NextPage = () => {
     <>
       <HeadSimple title="Visualization" />
       <HeaderSimple />
-      {isLoading && <Loader variant="dots" />}
+      {isLoading && <Title align="center"><Container><Loader variant="dots" /></Container></Title>}
       {!isLoading && <Mapss result={result} setResult={setResult} reloadFlag={reloadFlag}
         setReloadFlag={setReloadFlag} projectName={projectName} />}
     </>

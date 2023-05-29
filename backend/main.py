@@ -10,6 +10,28 @@ import pandas as pd
 import numpy as np
 from heatmap import create_heatmap
 from final_preprocessing import get_final_x_by_input
+import csv
+
+
+def group_values_in_csv(file_path):
+    # Открываем CSV-файл для чтения
+    with open(file_path, 'r') as file:
+        reader = csv.reader(file)
+        rows = list(reader)  # Читаем все строки CSV-файла
+
+    # Определяем количество столбцов
+    num_columns = len(rows[0])
+
+    # Группируем значения в последнем столбце в список
+    for row in rows[1:]:  # Начинаем со второй строки, так как первая содержит заголовки столбцов
+        last_column = row[-1]
+        values = last_column.split(',')  # Разделяем значения по запятой
+        row[-1] = values
+
+    # Перезаписываем файл
+    with open(file_path, 'w', newline='') as file:
+        writer = csv.writer(file)
+        writer.writerows(rows)
 
 
 app = FastAPI()
@@ -36,6 +58,15 @@ async def upload(files: list[UploadFile] = File(...), projectName: str = Form(..
     return {"success": True}
 
 
+@app.post("/uploadCorrectedResults/{projectName}")
+async def upload(file: list[UploadFile] = File(...), projectName: str = None):
+    # os.makedirs(os.path.join("storage", projectName), exist_ok=True)
+    with open(os.path.join("storage", projectName, "corrected_results.csv"), "wb") as buffer:
+        buffer.write(file[0].file.read())
+    group_values_in_csv(os.path.join("storage", projectName, "corrected_results.csv"))
+    return {"success": True}
+
+
 @app.get("/files")
 async def files(): 
     return next(os.walk('storage'))[1]
@@ -55,19 +86,20 @@ async def generate_pred(projectName: str, corrected: bool = False):
     results = os.path.join("storage", projectName, "results.csv")
     corrected_results = os.path.join("storage", projectName, "corrected_results.csv")
     bounds = os.path.join("storage", projectName, "bounds.json")
-    get_final_x_by_input(df1, df2, df3, x, results, corrected_results, bounds)
+    config = os.path.join("storage", projectName, "config.json")
+    get_final_x_by_input(df1, df2, df3, x, results, corrected_results, bounds, config)
 
 @app.get("/result/{projectName}")
-async def result(projectName: str, corrected: bool = False):
+async def result(projectName: str, corrected: bool = True):
     sleep(1)
     
     if corrected:
-        path_to_file = os.path.join("storage", projectName, "corrected_result.csv")
+        path_to_file = os.path.join("storage", projectName, "corrected_results.csv")
     else:
         path_to_file = os.path.join("storage", "example.csv")
+    os.makedirs(os.path.join("storage", projectName), exist_ok=True)
     await generate_pred(projectName)
     results = pd.read_csv(path_to_file)
-    os.makedirs(os.path.join("storage", projectName), exist_ok=True)
     create_heatmap(results, os.path.join("storage", projectName, "heatmap.html"))
     return FileResponse(path_to_file)
     

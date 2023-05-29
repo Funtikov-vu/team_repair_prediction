@@ -166,13 +166,17 @@ def get_predict_probas(df, clfs):
             predict_probas.append(clfs[i].predict_proba(df)[:, 1])
     return predict_probas
 
-def get_final_x_by_input(fbasenewname, sbasenewname, tbasenewname, outname, resultsname, add_name, boundsname):
+def get_final_x_by_input(fbasenewname, sbasenewname, tbasenewname, outname, resultsname, add_name, boundsname, configname):
     if not os.path.isfile(outname):
         geo = pd.read_csv(geo_name)
         df1, df2, df3 = get_datasets(fbasenewname, sbasenewname, tbasenewname)
         df1_new = preprocess(df1, df2, df3, geo)
         time_max = df1_new["appeals_list"].apply(lambda x: max([y['Дата создания во внешней системе'] for y in x]) if isinstance(x, list) else 0).max()
-        x, _, _ = generate_x_y(df1_new, time_max - 120, time_max, time_max - 120, time_max, n_iter=1)
+        with open(configname, "r") as file:
+            config = json.load(file)
+        start = (datetime.strptime(eval(config["dates"])[0], "%Y-%m-%dT%H:%M:%S.%fZ") - datetime_start).total_seconds() / (3600 * 24)
+        end = (datetime.strptime(eval(config["dates"])[1], "%Y-%m-%dT%H:%M:%S.%fZ") - datetime_start).total_seconds() / (3600 * 24)
+        x, _, _ = generate_x_y(df1_new, time_max - 180, time_max, start, end, n_iter=1)
         x.to_csv(outname, index=False)
     if not os.path.isfile(resultsname):
         x = pd.read_csv(outname)

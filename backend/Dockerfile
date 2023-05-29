@@ -1,4 +1,4 @@
-FROM python:3.10.9-slim
+FROM python:3.11-slim
 
 WORKDIR /backend
 
@@ -6,9 +6,9 @@ COPY ./requirements.txt /backend/requirements.txt
 
 RUN pip install --no-cache-dir --upgrade -r /backend/requirements.txt
 
-COPY ./ /backend/app
+COPY ./ /backend
 
 # TODO: upgrade this to a production command
 # https://www.uvicorn.org/deployment/#gunicorn
 
-CMD [ "/bin/bash", "-c", "uvicorn app.main:app --host 0.0.0.0 --port 8000"]
+CMD [ "/bin/bash", "-c", "gunicorn -k uvicorn.workers.UvicornWorker -b 0.0.0.0:8080 --timeout 300 main:app"]
