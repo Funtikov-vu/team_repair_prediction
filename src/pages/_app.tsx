@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { type Session } from "next-auth";
 import { SessionProvider } from "next-auth/react";
 import { type AppType } from "next/app";
@@ -9,6 +8,7 @@ import NextApp, { AppProps, AppContext } from 'next/app';
 import { getCookie, setCookie } from 'cookies-next';
 import Head from 'next/head';
 import { MantineProvider, ColorScheme, ColorSchemeProvider } from '@mantine/core';
+import { Notifications } from '@mantine/notifications';
 
 const MyApp = (props: AppProps & { colorScheme: ColorScheme }) => {
   const { Component, pageProps } = props;
@@ -24,12 +24,13 @@ const MyApp = (props: AppProps & { colorScheme: ColorScheme }) => {
   return (
     <SessionProvider session={session}>
       <Head>
-        <title>Mantine next example</title>
+        <title>City-helper</title>
         <meta name="viewport" content="minimum-scale=1, initial-scale=1, width=device-width" />
         <link rel="shortcut icon" href="/favicon.svg" />
       </Head>
       <ColorSchemeProvider colorScheme={colorScheme} toggleColorScheme={toggleColorScheme}>
         <MantineProvider theme={{ colorScheme }} withGlobalStyles withNormalizeCSS>
+          <Notifications />
           <Component {...pagePropsOnly} />
         </MantineProvider>
       </ColorSchemeProvider>

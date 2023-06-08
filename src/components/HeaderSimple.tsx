@@ -1,25 +1,31 @@
-import { useState } from 'react';
-import { createStyles, Header, Container, Group, Burger, Text, rem } from '@mantine/core';
-import { useDisclosure } from '@mantine/hooks';
+import { createStyles, Header, Container, Group, Text, rem, Menu, Button } from '@mantine/core';
 import { AuthShowcase } from './AuthShowcase';
 import Link from 'next/link';
+import { IconApi, IconArrowsLeftRight, IconBook2, IconMessageCircle, IconPhoto, IconPresentation, IconSearch, IconSettings, IconTrash } from '@tabler/icons-react';
 
 const useStyles = createStyles((theme) => ({
   header: {
+    backgroundColor: theme.fn.variant({ variant: 'filled', color: theme.primaryColor }).background,
+    borderBottom: 0,
+  },
+
+  inner: {
+    height: rem(56),
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
-    height: '100%',
   },
 
   links: {
-    [theme.fn.smallerThan('xs')]: {
-      display: 'none',
+    [theme.fn.smallerThan('sm')]: {
+      // display: 'none',
+      transform: 'scale(0.75)',
     },
+    color: theme.white,
   },
 
   burger: {
-    [theme.fn.largerThan('xs')]: {
+    [theme.fn.largerThan('sm')]: {
       display: 'none',
     },
   },
@@ -30,22 +36,21 @@ const useStyles = createStyles((theme) => ({
     padding: `${rem(8)} ${rem(12)}`,
     borderRadius: theme.radius.sm,
     textDecoration: 'none',
-    color: theme.colorScheme === 'dark' ? theme.colors.dark[0] : theme.colors.gray[7],
+    color: theme.white,
     fontSize: theme.fontSizes.sm,
     fontWeight: 500,
+    cursor: 'pointer',
 
-    '&, &:hover': {
-      // backgroundColor: theme.colorScheme === 'dark' ? theme.colors.dark[6] : theme.colors.gray[0],
-      backgroundColor: theme.fn.variant({ variant: 'light', color: theme.primaryColor }).background,
-      color: theme.fn.variant({ variant: 'light', color: theme.primaryColor }).color,
+    '&:hover': {
+      backgroundColor: theme.fn.lighten(
+        theme.fn.variant({ variant: 'filled', color: theme.primaryColor }).background!,
+        0.1
+      ),
     },
   },
 
-  linkActive: {
-    '&, &:hover': {
-      backgroundColor: theme.fn.variant({ variant: 'light', color: theme.primaryColor }).background,
-      color: theme.fn.variant({ variant: 'light', color: theme.primaryColor }).color,
-    },
+  linkLabel: {
+    marginRight: rem(5),
   },
 }));
 
@@ -72,8 +77,6 @@ const defaultLinks: HeaderLinks = [
 ];
 
 export function HeaderSimple({ links = defaultLinks }) {
-  const [opened, { toggle }] = useDisclosure(false);
-  // const [active, setActive] = useState(links[0].link);
   const { classes, cx } = useStyles();
 
   const items = links.map((link) => (
@@ -81,24 +84,35 @@ export function HeaderSimple({ links = defaultLinks }) {
       key={link.label}
       href={link.link}
       className={cx(classes.link)}
-      onClick={(event) => {
-        // event.preventDefault();
-        // setActive(link.link);
-      }}
     >
       {link.label}
     </Link>
   ));
 
+  const menu = <Menu shadow="md" width={170} trigger="hover" openDelay={100} closeDelay={200}>
+    <Menu.Target>
+      <a className={cx(classes.link)}>Docs</a>
+    </Menu.Target>
+
+    <Menu.Dropdown>
+      {/* <Menu.Label>Docs</Menu.Label> */}
+      <Menu.Item icon={<IconApi size={14} />} component='a' href='/api-docs'>API</Menu.Item>
+      <Menu.Item icon={<IconBook2 size={14} />} component='a' 
+        href='https://docs.google.com/document/d/1Q5_j9p0USTPmeIf2JIoqQxdTch2TvCVS54WjHcjOW_g'>Документация</Menu.Item>
+      <Menu.Item icon={<IconPresentation size={14} />} component='a' 
+        href='https://docs.google.com/presentation/d/1rUrK29y0N2JW00jchal-9AL8Ugzgi6ce'>Презентация</Menu.Item>
+    </Menu.Dropdown>
+  </Menu>;
+
   return (
-    <Header height={60} mb={1}>
-      <Container className={classes.header}>
-        <Text color='blue'><b>City-helper</b></Text>
-        <Group spacing={5} className={classes.links}>
+    <Header height={60} mb={1} className={classes.header}>
+      <Container className={classes.inner}>
+        <Text color='white'><b><Link href='/' style={{ textDecoration: 'none', color: 'white' }}>City-helper</Link></b></Text>
+        <Group spacing={5} className={cx(classes.links)}>
           {items}
-          <AuthShowcase />
+          {menu}
+          <AuthShowcase classes={classes} cx={cx}/>
         </Group>
-        {/* <Burger opened={opened} onClick={toggle} className={classes.burger} size="sm" /> */}
       </Container>
     </Header>
   );

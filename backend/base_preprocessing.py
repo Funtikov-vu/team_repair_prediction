@@ -10,9 +10,9 @@ def read_sub_df(df):
 
 def preprocess_first_dataset(fname, fbasename):
     try:
-        df_new = pd.read_csv(fname)
-    except:
         df_new = pd.read_excel(fname, sheet_name=None)
+    except:
+        df_new = pd.read_csv(fname)
     if isinstance(df_new, dict):
         key = list(df_new)[0]
         df_new = df_new[key]
@@ -35,10 +35,10 @@ def preprocess_first_dataset(fname, fbasename):
 
 def preprocess_second_dataset(sname):
     try:
+        df_new = pd.read_excel(sname, sheet_name=None)
+    except:
         df_new = pd.read_csv(sname)
         return df_new
-    except:
-        df_new = pd.read_excel(sname, sheet_name=None)
     if not isinstance(df_new, dict):
         return df_new
     df_arr = []
@@ -49,9 +49,9 @@ def preprocess_second_dataset(sname):
 
 def preprocess_third_dataset(tname):
     try:
-        return pd.read_csv(tname)
+        return pd.read_excel(tname)
     except:
-         return pd.read_excel(tname)
+        return pd.read_csv(tname)
         
 def get_datasets(fname, sname, tname):
     df1 = preprocess_first_dataset(fname, fbasename)

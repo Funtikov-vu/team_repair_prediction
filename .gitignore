@@ -43,3 +43,8 @@ yarn-error.log*
 
 backend/__pycache__
 .vscode
+
+fly.toml
+backend/fly.toml
+
+backend/storage/example

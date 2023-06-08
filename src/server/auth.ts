@@ -43,6 +43,11 @@ export const authOptions: NextAuthOptions = {
     strategy: 'jwt',
     maxAge: 30 * 24 * 60 * 60, // 30 days
   },
+  callbacks: {
+    async redirect({ url, baseUrl }) {
+      return baseUrl
+    }
+  },
   providers: [
     CredentialsProvider({
       // The name to display on the sign in form (e.g. "Sign in with...")

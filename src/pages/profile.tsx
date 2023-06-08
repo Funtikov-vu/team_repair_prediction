@@ -1,42 +1,54 @@
-import { type NextPage } from "next";
-import Head from "next/head";
-import { api } from "~/utils/api";
-import { Welcome } from '../components/Welcome/Welcome';
-import { HeaderSimple, HeaderLinks } from "~/components/HeaderSimple";
+import { GetStaticProps, type NextPage } from "next";
+import { HeaderSimple } from "~/components/HeaderSimple";
 import HeadSimple from "~/components/HeadSimple";
 import { useSession } from "next-auth/react";
 import { useEffect, useState } from "react";
 import axios from "axios";
-import { Button, Title, Text, Container, Stack } from "@mantine/core";
+import { Button, Title, Container, Stack, Table } from "@mantine/core";
 import Link from "next/link";
+import { AuthMessage } from "~/components/AuthMessage";
+
+export const getStaticProps: GetStaticProps<{}> = async () => {
+  return { props: {} };
+};
 
 const Profile: NextPage = () => {
-  const { data: session, status } = useSession();
+  const { data: session } = useSession();
   const [projects, setProjects] = useState<string[]>([]);
   console.log(projects);
 
-  if (status === "loading") {
-    return <p>Loading...</p>
-  }
-
-  if (status === "unauthenticated") {
-    return <p>Access Denied</p>
-  }
-
-  // useEffect(() => {
-  //   async function getProjects() {
-  //     const result = await axios.get(`http://127.0.0.1:8000/files`, {
-  //       headers: {
-  //         "Content-Type": "text",
-  //       },
-  //     }).then((res) => { return res.data });
-  //     setProjects(eval(result));
-  //   };
-  //   getProjects();
-  // }, []);
+  useEffect(() => {
+    async function getProjects() {
+      const result = await axios.get(`${process.env.NEXT_PUBLIC_BACKEND_URL}/projects`, {
+        headers: {
+          "Content-Type": "text",
+        },
+      }).then((res) => { return res.data });
+      setProjects(eval(result));
+    };
+    getProjects();
+  }, []);
 
   async function onSubmit(event: any) {
-    const result = await axios.get(`${process.env.NEXT_PUBLIC_BACKEND_URL}/files`,
+    const result = await axios.get(`${process.env.NEXT_PUBLIC_BACKEND_URL}/projects`,
+      {
+        headers: {
+          'Accept': 'text',
+        },
+      },
+    ).then((res) => { return eval(res.data); });
+    setProjects(result);
+  }
+
+  async function deleteProject(event: any, projectName: string) {
+    await axios.delete(`${process.env.NEXT_PUBLIC_BACKEND_URL}/projects/${projectName}`,
+      {
+        headers: {
+          'Accept': 'text',
+        },
+      },
+    );
+    const result = await axios.get(`${process.env.NEXT_PUBLIC_BACKEND_URL}/projects`,
       {
         headers: {
           'Accept': 'text',
@@ -52,22 +64,39 @@ const Profile: NextPage = () => {
     <>
       <HeadSimple title="Profile" />
       <HeaderSimple />
+      <br />
       <Title align="center">
         Выбор проекта
       </Title>
       <br />
-      <Container>
-        <Stack>
-          <Button onClick={onSubmit}>Получить список проектов</Button>
-          <div>
+      <AuthMessage session={session} />
+      {session && <Container>
+        <Stack spacing="md">
+          <Button onClick={onSubmit}>Обновить список проектов</Button>
+          <Table striped highlightOnHover withBorder withColumnBorders>
+            <thead>
+              <tr>
+                <th>Проект</th>
+                <th>Управление</th>
+              </tr>
+            </thead>
+            <tbody>
             {projects.map((project) => (
-              <Link href={{ pathname: "/visualization", query: { projectName: project } }}>
-                <p>{project}</p>
-              </Link>
+              <tr key={project}>
+                <td>
+                  <Link href={{ pathname: "/visualization", query: { projectName: project } }}>
+                    <p>{project}</p>
+                  </Link>
+                </td>
+                <td>
+                  <Button type="submit" onClick={(e) => {deleteProject(e, project)}}>Удалить</Button>
+                </td>
+              </tr>
             ))}
-          </div>
+            </tbody>
+          </Table>
         </Stack>
-      </Container>
+      </Container>}
     </>
   );
 };

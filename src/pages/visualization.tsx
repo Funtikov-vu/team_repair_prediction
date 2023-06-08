@@ -1,10 +1,10 @@
 import axios from "axios";
-import { type NextPage } from "next";
+import { GetStaticProps, type NextPage } from "next";
 import { useRouter } from "next/router";
 import { HeaderSimple } from "~/components/HeaderSimple";
 import HeadSimple from "~/components/HeadSimple";
 import Papa from "papaparse";
-import { Accordion, Button, Container, Divider, Grid, Group, List, Loader, MultiSelect, RangeSlider, ScrollArea, Stack, Switch, Text, Title } from "@mantine/core";
+import { Accordion, Button, Container, Divider, Grid, Group, List, Loader, MultiSelect, RangeSlider, ScrollArea, Stack, Switch, Text, TextInput, Title } from "@mantine/core";
 import { useEffect, useState } from "react";
 import React from 'react';
 import { GoogleMap, InfoWindow, LoadScript, MarkerF } from '@react-google-maps/api';
@@ -12,10 +12,16 @@ import { useSession } from "next-auth/react";
 import { CSVLink } from 'react-csv';
 import filters from '../data/filters.json';
 import jobs from '../data/jobs.json';
+import { AuthMessage } from "~/components/AuthMessage";
+import { notifications } from "@mantine/notifications";
+import { IconSearch } from "@tabler/icons-react";
 
+export const getStaticProps: GetStaticProps<{}> = async () => {
+  return { props: {} };
+};
 
 const alertFeature: string = "appeals_count";
-const alertFeatureThreshold: number = 0;
+const alertFeatureThreshold: number = 300;
 
 const jobList = jobs.map((item) => {
     return { label: item.substring(0, 100), value: item }}).sort((a, b) => a.label.localeCompare(b.label));
@@ -35,21 +41,35 @@ const center = {
   lng: 37.395744
 };
 
-const Mapss: any = ({ result, setResult, reloadFlag, setReloadFlag, projectName }) => {
+const Maps: any = ({ result, setResult, reloadFlag, setReloadFlag, projectName }) => {
   const onLoad = (marker: any) => {
     // console.log('marker: ', marker)
   }
+
+  if (!result)
+    return (<></>);
 
   const [selectedCenter, setSelectedCenter] = useState(null);
   const [jobsToAdd, setJobsToAdd] = useState([]);
   const [changes, setChanges] = useState([]);
   const [filterBounds, setFilterBounds] = useState(filters);
   const [alertIgnore, setAlertIgnore] = useState(0);
+  const [stringToSearch, setStringToSearch] = useState('');
+  const [top10, setTop10] = useState(false);
 
-  const filteredResults = result.filter((item: any) => (Object.keys(filterBounds).map((key) => {
+  let filteredResults = result.filter((item: any) => (Object.keys(filterBounds).map((key) => {
     return { name: key, type: filters[key].type, bounds: filterBounds[key].bounds }
   })
-    .map(filter => (filter.type === 'float') ? (item[filter.name] >= filter.bounds[0] && item[filter.name] <= filter.bounds[1]) : (filter.bounds.includes(item[filter.name])))).every(item => item === true));
+    .map(filter => (filter.type === 'float') ? (item[filter.name] >= filter.bounds[0] && item[filter.name] <= filter.bounds[1]) : (filter.bounds.includes(item[filter.name])))).every(item => item === true)
+  );
+
+  if (stringToSearch.length > 1) {
+    filteredResults = filteredResults.filter((item: any) => item.description.toLowerCase().includes(stringToSearch.toLowerCase()));
+  }
+
+  if (top10) {
+    filteredResults = result.sort((a, b) => (a[alertFeature] < b[alertFeature]) ? 1 : -1).slice(0, 10);
+  }
   
   const Markers = filteredResults.map((item: any) => (
     <MarkerF clickable onLoad={onLoad} position={{ lat: item.lat, lng: item.lng }} key={item.unom}
@@ -85,7 +105,7 @@ const Mapss: any = ({ result, setResult, reloadFlag, setReloadFlag, projectName 
         </>
       }
       { (filter.type === 'string') &&
-          <MultiSelect key={filter.name} data={filter.bounds} label={filter.name} value={filterBounds[filter.name]['bounds']}
+          <MultiSelect searchable limit={20} key={filter.name} data={filter.bounds} label={filter.name} value={filterBounds[filter.name]['bounds']}
             onChange={(e) => changeFilterBounds(filter.name, e)}
             defaultValue={filter.bounds}
             name={currentFilter}
@@ -158,13 +178,13 @@ const Mapss: any = ({ result, setResult, reloadFlag, setReloadFlag, projectName 
                 })}
               </List>
               <br />
-              <Stack align="flex-start">
-                  <MultiSelect data={jobList.filter((job) => !item[key].includes(job.value))
+              <Group position='left' grow>
+                  <MultiSelect miw={370} data={jobList.filter((job) => !item[key].includes(job.value))
                   } value={jobsToAdd} onChange={setJobsToAdd} dropdownPosition="bottom"
-                    label="Выберите работы, которые, на ваш взгляд, следует добавить &nbsp; &nbsp; &nbsp;"
+                    placeholder="Выберите работы, которые следует добавить &nbsp; &nbsp; &nbsp;"
                   />
-                <Button onClick={() => {addJobs(item.unom)}}>Добавить работы</Button>
-              </Stack>
+                  <Button maw={170} onClick={() => {addJobs(item.unom)}}>Добавить работы</Button>
+              </Group>
               </>
               } else if (["description", "object_type"].some((element) => element === key)) {
             return (<Text>
@@ -173,11 +193,21 @@ const Mapss: any = ({ result, setResult, reloadFlag, setReloadFlag, projectName 
           )}
         })}
         <br />
-        <Button onClick={() => deleteElement(item.unom)}>Удалить объект</Button>
-        {(alertIgnore == 1) && <Stack>
-          <Text>Вы уверены, что хотите удалить объект? По нему поступило много жалоб.</Text>
-          <Button onClick={() => { setAlertIgnore(2); deleteElement(item.unom); }}>Удалить объект</Button>
-        </Stack>}
+        <Stack align="flex-start">
+          <Group>
+            <Button color={alertIgnore == 1 ? 'red' : "blue"} 
+              onClick={() => {
+                if (alertIgnore == 1) 
+                  setAlertIgnore(2);
+                deleteElement(item.unom)
+              }}
+            >Удалить объект</Button>
+            {(alertIgnore == 1) && <Button onClick={() => {setAlertIgnore(0)}}>Отмена</Button>}
+          </Group>
+          {(alertIgnore == 1) && <>
+            <Text>Вы уверены, что хотите удалить объект? По нему поступило много жалоб.</Text>
+          </>}
+        </Stack>
       </Accordion.Panel>
     </Accordion.Item>
   ));
@@ -199,8 +229,7 @@ const Mapss: any = ({ result, setResult, reloadFlag, setReloadFlag, projectName 
       getHeatmap();
   }, [])
 
-  const uploadCorrectedResults = (e) => {
-    e.preventDefault();
+  const sendCorrectedResults = () => {
     const formData = new FormData();
     //convert result to FormData csv file and append to formData
     const csvRows = [];
@@ -221,10 +250,30 @@ const Mapss: any = ({ result, setResult, reloadFlag, setReloadFlag, projectName 
       headers: {
         'Content-Type': 'text/csv'
       }
-    })
+    });
   }
 
+  const uploadCorrectedResults = (e) => {
+    e.preventDefault();
+    sendCorrectedResults();
+    notifications.show({
+      message: 'Результаты сохранены на сервере', 
+      title: 'Успешно', 
+      withCloseButton: true,
+      autoClose: 2000,
+    });
+  }
 
+  const markToRetrain = () => {
+    sendCorrectedResults();
+    axios.post(`${process.env.NEXT_PUBLIC_BACKEND_URL}/markToRetrain/${projectName}`);
+    notifications.show({
+      message: 'Данные отправлены на переобучение',
+      title: 'Успешно',
+      withCloseButton: true,
+      autoClose: 2000,
+    });
+  }
 
 
 
@@ -236,24 +285,39 @@ const Mapss: any = ({ result, setResult, reloadFlag, setReloadFlag, projectName 
           <Container>
             <Stack spacing="xxxs">
               {filterElements}
+              <Divider my="sm" />
+              <TextInput
+                placeholder="Начните ввод адреса"
+                onChange={(event) => {
+                  const { value } = event.currentTarget;
+                  if (value.length > 1 || value == '')
+                    setStringToSearch(value)
+                }}
+                icon={<IconSearch />}
+              />
             </Stack>
           </Container>
         </Grid.Col>
         <Grid.Col span="auto">
-          <Container>
-            <Text><h3>Управление</h3></Text>
+          <Stack align='flex-start'>
+            <h3 style={{marginBottom: -5}}>Управление</h3>
             <Group>
               <CSVLink data={filteredResults} filename="results.csv" 
                 style={{ textDecoration: "none", color: "white" }} onclick="location.href='#'"><Button>Скачать CSV</Button></CSVLink>
               <form onSubmit={uploadCorrectedResults}><Button type="submit">Сохранить на сервере</Button></form>
             </Group>
-          </Container>
-          <Container>
+            <Button onClick={markToRetrain}>Использовать данные для переобучения моделей</Button>
+            {/* button to show top-10 results */}
+            <Button onClick={() => {
+              setTop10(!top10);
+            } }>Показать {!top10 ? 'топ-10' : 'всё'}</Button>
+          </Stack>
+          {/* <Container>
             <Text><h3>Отключить фактор модели</h3></Text>
             <Stack>
               {switchElements}
             </Stack>
-          </Container>
+          </Container> */}
         </Grid.Col>
       </Grid>
       <Grid>
@@ -355,19 +419,23 @@ type resultPropsType = {
 };
 
 const Visualization: NextPage = () => {
-  const { data: session, status } = useSession();
+  const { data: session } = useSession();
 
   const router = useRouter();
   const { projectName } = router.query;
   console.log(projectName);
   const [result, setResult] = useState<any>(null);
-  const resultProps: resultPropsType = { result, setResult };
   const [isLoading, setLoading] = useState(true);
   const [reloadFlag, setReloadFlag] = useState(false);
 
   useEffect(() => {
     async function getResult(projectName: string) {
-      const result = await axios.get(`${process.env.NEXT_PUBLIC_BACKEND_URL}/result/${projectName}`, {
+      if (!session) {
+        await new Promise((resolve) => setTimeout(resolve, 5000));
+        setReloadFlag(!reloadFlag);
+        return;
+      }
+      const result = await axios({method: 'GET', url: `${process.env.NEXT_PUBLIC_BACKEND_URL}/result/${projectName}`, 
         headers: {
           "Content-Type": "text/tsv",
         },
@@ -375,26 +443,25 @@ const Visualization: NextPage = () => {
         res, { header: true, dynamicTyping: true }).data.map((item: any) => {
           item.target = (item.target !== "") ? eval(item.target) : [];
           return item;
-         }).filter((item: any) => item.unom !== null).sort((a, b) => (a.description > b.description) ? 1 : -1)});
+         }).filter((item: any) => item.unom !== null).sort((a, b) => (a.description > b.description) ? 1 : -1)})
+         .catch((err) => { console.log(err); } );
       if (result) {
-        console.log(result);
+        setResult(result);
+        setLoading(false);
+      } else {
+        setReloadFlag(!reloadFlag);
       }
-      setResult(result);
-      setLoading(false);
     };
     getResult(projectName as string);
   }, [reloadFlag]);
-
-
-  console.log(result);
-
 
   return (
     <>
       <HeadSimple title="Visualization" />
       <HeaderSimple />
-      {isLoading && <Title align="center"><Container><Loader variant="dots" /></Container></Title>}
-      {!isLoading && <Mapss result={result} setResult={setResult} reloadFlag={reloadFlag}
+      <AuthMessage session={session} />
+      {session && isLoading && <Title align="center"><Container><Loader variant="dots" /></Container></Title>}
+      {session && !isLoading && <Maps result={result} setResult={setResult} reloadFlag={reloadFlag}
         setReloadFlag={setReloadFlag} projectName={projectName} />}
     </>
   );

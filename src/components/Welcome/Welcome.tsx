@@ -13,7 +13,7 @@ export function Welcome() {
         </Text>
       </Title>
       <Text color="dimmed" align="center" size="lg" sx={{ maxWidth: 580 }} mx="auto" mt="xl">
-        Войдите в систему, чтобы получить доступ к личному кабинету. Начните работу на вкладке Data.
+        Войдите в систему, чтобы получить доступ к личному кабинету. Начните работу на вкладке Profile или Data.
       </Text>
     </>
   );

@@ -7,8 +7,12 @@
 import { httpBatchLink, loggerLink } from "@trpc/client";
 import { createTRPCNext } from "@trpc/next";
 import { type inferRouterInputs, type inferRouterOutputs } from "@trpc/server";
+import { getServerSession } from "next-auth";
 import superjson from "superjson";
 import { type AppRouter } from "~/server/api/root";
+import { authOptions } from "~/server/auth";
+import secrets from "../data/secrets.json"
+
 
 const getBaseUrl = () => {
   if (typeof window !== "undefined") return ""; // browser should use relative url
@@ -65,3 +69,20 @@ export type RouterInputs = inferRouterInputs<AppRouter>;
  * @example type HelloOutput = RouterOutputs['example']['hello']
  */
 export type RouterOutputs = inferRouterOutputs<AppRouter>;
+
+export const checkAuth = async (req, res) => {
+  const session = await getServerSession(req, res, authOptions)
+  //check if headers contains the right auth token (Authorization: Token <token>)
+  const token = req.headers.authorization?.split(" ")[1]
+  //check if session is valid or if token is in secrets.json
+  if (session || secrets.includes(token)) {
+    // Signed in
+    // res.status(200).json({ message: "Signed in" })
+    return true
+  } else {
+    // Not Signed in
+    res.status(401).json({ message: "Unauthorized" })
+    return false
+  }
+}
+

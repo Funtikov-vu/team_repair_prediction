@@ -11,4 +11,4 @@ COPY ./ /backend
 # TODO: upgrade this to a production command
 # https://www.uvicorn.org/deployment/#gunicorn
 
-CMD [ "/bin/bash", "-c", "gunicorn -k uvicorn.workers.UvicornWorker -b 0.0.0.0:8080 --timeout 300 main:app"]
+CMD [ "/bin/bash", "-c", "gunicorn -k uvicorn.workers.UvicornWorker -b 0.0.0.0:8080 --workers 5 --max-requests 1 --worker-tmp-dir /dev/shm --timeout 255 main:app"]

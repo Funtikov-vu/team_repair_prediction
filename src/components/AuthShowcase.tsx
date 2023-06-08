@@ -1,20 +1,19 @@
-import { Button, Container, Text } from "@mantine/core";
+import { Button, Container, Group } from "@mantine/core";
 import { signIn, signOut, useSession } from "next-auth/react";
-import { api } from "~/utils/api";
 
-export const AuthShowcase: React.FC = () => {
+export const AuthShowcase = ({classes, cx}) => {
   const { data: sessionData } = useSession();
 
   return (
-    <>
-      <Container>
-        {sessionData && <span>Logged in as {sessionData.user?.name}</span>}
+    <Group>
+      <Container className={cx(classes.links)}>
+        {/* {sessionData && <span>Logged in as {sessionData.user?.name}</span>} */}
       </Container>
-      <Button
+      <Button className={cx(classes.link)}
         onClick={sessionData ? () => void signOut() : () => void signIn()}
       >
-        {sessionData ? "Sign out" : "Sign in"}
+        {sessionData ? "Выход" : "Вход"}
       </Button>
-    </>
+    </Group>
   );
 };

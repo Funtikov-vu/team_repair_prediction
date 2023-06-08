@@ -1,12 +1,13 @@
-// @ts-nocheck
-import { type NextPage } from "next";
+import { GetStaticProps, type NextPage } from "next";
 import Head from "next/head";
-import { api } from "~/utils/api";
 import { Welcome } from '../components/Welcome/Welcome';
-import { HeaderSimple, HeaderLinks } from "~/components/HeaderSimple";
+import { HeaderSimple } from "~/components/HeaderSimple";
+
+export const getStaticProps: GetStaticProps<{}> = async () => {
+  return { props: { } };
+};
 
 const Home: NextPage = () => {
-  // const hello = api.example.hello.useQuery({ text: "from tRPC" });
 
   return (
     <>
