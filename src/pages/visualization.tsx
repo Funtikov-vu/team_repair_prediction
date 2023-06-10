@@ -4,7 +4,7 @@ import { useRouter } from "next/router";
 import { HeaderSimple } from "~/components/HeaderSimple";
 import HeadSimple from "~/components/HeadSimple";
 import Papa from "papaparse";
-import { Accordion, Button, Container, Divider, Grid, Group, List, Loader, MultiSelect, RangeSlider, ScrollArea, Stack, Switch, Text, TextInput, Title } from "@mantine/core";
+import { Accordion, Button, Container, Divider, Flex, Grid, Group, List, Loader, Modal, MultiSelect, RangeSlider, ScrollArea, Stack, Switch, Table, Text, TextInput, Title } from "@mantine/core";
 import { useEffect, useState } from "react";
 import React from 'react';
 import { GoogleMap, InfoWindow, LoadScript, MarkerF } from '@react-google-maps/api';
@@ -14,14 +14,49 @@ import filters from '../data/filters.json';
 import jobs from '../data/jobs.json';
 import { AuthMessage } from "~/components/AuthMessage";
 import { notifications } from "@mantine/notifications";
-import { IconSearch } from "@tabler/icons-react";
+import { IconCheck, IconCloudUpload, IconSearch, IconUpload } from "@tabler/icons-react";
+import { useDisclosure } from "@mantine/hooks";
+import { get } from "http";
 
-export const getStaticProps: GetStaticProps<{}> = async () => {
-  return { props: {} };
-};
+// export const getStaticProps: GetStaticProps<{}> = async () => {
+//   return { props: {} };
+// };
+
+const WORK_WEIGHTS = {
+  "ремонт крыши": 10,
+  "ремонт внутридомовых инженерных систем горячего водоснабжения (стояки)": 9,
+  "ремонт внутридомовых инженерных систем теплоснабжения (стояки)": 9,
+  "ремонт внутридомовых инженерных систем газоснабжения": 9,
+  "ремонт внутридомовых инженерных систем электроснабжения": 8,
+  "замена лифтового оборудования": 0.8,
+  "ремонт внутридомовых инженерных систем водоотведения (канализации) (стояки)": 8,
+  "ремонт внутридомовых инженерных систем холодного водоснабжения (стояки)": 8,
+  "ремонт пожарного водопровода": 7,
+  "ремонт фасадов": 7,
+  "ремонт внутридомовых инженерных систем водоотведения (канализации) (выпуски и сборные трубопроводы)": 7,
+  "ремонт внутридомовых инженерных систем горячего водоснабжения (разводящие магистрали)": 6,
+  "ремонт внутридомовых инженерных систем холодного водоснабжения (разводящие магистрали)": 6,
+  "ремонт внутридомовых инженерных систем теплоснабжения (разводящие магистрали)": 6,
+  "ремонт подъездов, направленный на восстановление их надлежащего состояния и проводимый при выполнении иных работ по капитальному ремонту общего имущества в многоквартирном доме": 5,
+  "ремонт внутреннего водостока": 5,
+  "ремонт подвальных помещений, относящихся к общему имуществу в многоквартирном доме": 1,
+  "ремонт мусоропровода": 3,
+  "замена оконных блоков, расположенных в помещениях общего пользования": 2
+}
 
 const alertFeature: string = "appeals_count";
 const alertFeatureThreshold: number = 300;
+
+const alertFeatureJobDeletion: string = "appeals_count";
+const alertFeatureThresholdJobDeletion: number = 300;
+
+const getObjectWeight = (object: any) => {
+  // check if object has "p" key
+  if (object.hasOwnProperty('p'))
+    // return sum object[p][i] * WORK_WEIGHTS[object['target'][i]]
+    return object['p'].reduce((acc, cur, i) => acc + cur * WORK_WEIGHTS[object['target'][i]], 0);
+  return object[alertFeature];
+}
 
 const jobList = jobs.map((item) => {
     return { label: item.substring(0, 100), value: item }}).sort((a, b) => a.label.localeCompare(b.label));
@@ -41,10 +76,9 @@ const center = {
   lng: 37.395744
 };
 
+
 const Maps: any = ({ result, setResult, reloadFlag, setReloadFlag, projectName }) => {
-  const onLoad = (marker: any) => {
-    // console.log('marker: ', marker)
-  }
+  const onLoad = (marker: any) => {}
 
   if (!result)
     return (<></>);
@@ -56,6 +90,16 @@ const Maps: any = ({ result, setResult, reloadFlag, setReloadFlag, projectName }
   const [alertIgnore, setAlertIgnore] = useState(0);
   const [stringToSearch, setStringToSearch] = useState('');
   const [top10, setTop10] = useState(false);
+  // const [opened, { open, close }] = useDisclosure(false);
+  const [modalOpen, setModalOpen] = useState(-1);
+
+  const openModal = (unom) => {
+    setModalOpen(unom);
+  }
+
+  const closeModal = () => {
+    setModalOpen(-1);
+  }
 
   let filteredResults = result.filter((item: any) => (Object.keys(filterBounds).map((key) => {
     return { name: key, type: filters[key].type, bounds: filterBounds[key].bounds }
@@ -63,14 +107,14 @@ const Maps: any = ({ result, setResult, reloadFlag, setReloadFlag, projectName }
     .map(filter => (filter.type === 'float') ? (item[filter.name] >= filter.bounds[0] && item[filter.name] <= filter.bounds[1]) : (filter.bounds.includes(item[filter.name])))).every(item => item === true)
   );
 
+  if (top10) {
+    filteredResults = result.sort((a, b) => (getObjectWeight(a) < getObjectWeight(b)) ? 1 : -1).slice(0, 10);
+  }
+  
   if (stringToSearch.length > 1) {
     filteredResults = filteredResults.filter((item: any) => item.description.toLowerCase().includes(stringToSearch.toLowerCase()));
   }
 
-  if (top10) {
-    filteredResults = result.sort((a, b) => (a[alertFeature] < b[alertFeature]) ? 1 : -1).slice(0, 10);
-  }
-  
   const Markers = filteredResults.map((item: any) => (
     <MarkerF clickable onLoad={onLoad} position={{ lat: item.lat, lng: item.lng }} key={item.unom}
       onClick={(props) => {
@@ -115,8 +159,6 @@ const Maps: any = ({ result, setResult, reloadFlag, setReloadFlag, projectName }
     );
   });
 
-
-
   const switchElements = filtersArray.map((filter) => {
     return (
       <Switch key={filter.name} value={filter.name} label={filter.name} name={filter.name} onChange={(e) => {
@@ -124,7 +166,6 @@ const Maps: any = ({ result, setResult, reloadFlag, setReloadFlag, projectName }
     );
   });
 
-  //result array to object
   let resultObject = result.reduce((acc: any, item: any) => {
     acc[item.unom] = item;
     return acc;
@@ -161,38 +202,55 @@ const Maps: any = ({ result, setResult, reloadFlag, setReloadFlag, projectName }
     setJobsToAdd([]);
   }
 
+  // const ObjectInfo = ({unom}) => {
+  //   const [objectInfo, setObjectInfo] = useState(null);
+
+  //   useEffect(() => {
+  //     async function fetchData() {
+  //       const objectInfo = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/database/dataset/objects/${unom}`).then
+  //         (response => response.json());
+  //       setObjectInfo(objectInfo.parse());
+  //       console.log(objectInfo.parse());
+  //     }
+  //     if (modalOpen === unom)
+  //       fetchData();
+  //   }, [modalOpen]);
+
+  //   if (modalOpen !== unom)
+  //     return <></>;
+
+  //   return (
+  //     <Table>
+  //       <thead>
+  //         <tr>
+  //           <th>Параметр</th>
+  //           <th>Значение</th>
+  //         </tr>
+  //       </thead>
+  //       <tbody>
+  //         {Object.entries(objectInfo).map(([key, value]) => (
+  //           <tr>
+  //             <td>{key}</td>
+  //             <td>{value}</td>
+  //           </tr>
+  //         ))}
+  //       </tbody>
+  //     </Table>
+  //   );
+  // }
+
   //object list with accordion
   const objectList = filteredResults.map((item: any) => (
     <Accordion.Item value={"f" + item.unom}>
       <Accordion.Control onClick={() => { setAlertIgnore(0); }}>{item.description}</Accordion.Control>
       <Accordion.Panel>
-        {//print all attributes of selected object
-          Object.keys(item).map((key) => {
-            if (key === 'target') {
-              return <><b>работы</b>:<List>
-                {item[key].map((target: string) => { 
-                  return <List.Item><Stack spacing="xs" align="flex-start">
-                    {target} 
-                    <Button onClick={() => deleteJob(item.unom, target)}>Удалить работу</Button>
-                  </Stack></List.Item>
-                })}
-              </List>
-              <br />
-              <Group position='left' grow>
-                  <MultiSelect miw={370} data={jobList.filter((job) => !item[key].includes(job.value))
-                  } value={jobsToAdd} onChange={setJobsToAdd} dropdownPosition="bottom"
-                    placeholder="Выберите работы, которые следует добавить &nbsp; &nbsp; &nbsp;"
-                  />
-                  <Button maw={170} onClick={() => {addJobs(item.unom)}}>Добавить работы</Button>
-              </Group>
-              </>
-              } else if (["description", "object_type"].some((element) => element === key)) {
-            return (<Text>
-              <b>{key}</b>: {item[key]}
-            </Text>
-          )}
-        })}
-        <br />
+        {/* <Modal opened={modalOpen === item.unom} onClose={closeModal} title="Информация об объекте"
+          id={item.unom}>
+          <ObjectInfo unom={item.unom} />
+          {item.description}
+        </Modal> */}
+        <Stack align='flex-start'>
+        {/* <Button onClick={() => openModal(item.unom)}>Информация об объекте. Предыдущие инциденты и работы</Button> */}
         <Stack align="flex-start">
           <Group>
             <Button color={alertIgnore == 1 ? 'red' : "blue"} 
@@ -208,6 +266,24 @@ const Maps: any = ({ result, setResult, reloadFlag, setReloadFlag, projectName }
             <Text>Вы уверены, что хотите удалить объект? По нему поступило много жалоб.</Text>
           </>}
         </Stack>
+        <b>Работы:</b><List>
+            {item['target'].map((target: string) => { 
+              return <List.Item><Stack spacing="xs" align="flex-start">
+                {target} 
+                <Button onClick={() => deleteJob(item.unom, target)}>Удалить работу</Button>
+              </Stack></List.Item>
+            })}
+          </List>
+          <br />
+          <Group position='left' grow>
+              <MultiSelect miw={370} data={jobList.filter((job) => !item['target'].includes(job.value))
+              } value={jobsToAdd} onChange={setJobsToAdd} dropdownPosition="bottom"
+                placeholder="Выберите работы, которые следует добавить &nbsp; &nbsp; &nbsp;"
+              />
+              <Button maw={170} onClick={() => {addJobs(item.unom)}}>Добавить работы</Button>
+          </Group>
+          </Stack>
+        <br />
       </Accordion.Panel>
     </Accordion.Item>
   ));
@@ -260,7 +336,8 @@ const Maps: any = ({ result, setResult, reloadFlag, setReloadFlag, projectName }
       message: 'Результаты сохранены на сервере', 
       title: 'Успешно', 
       withCloseButton: true,
-      autoClose: 2000,
+      autoClose: 3000,
+      icon: <IconCloudUpload />,
     });
   }
 
@@ -271,7 +348,8 @@ const Maps: any = ({ result, setResult, reloadFlag, setReloadFlag, projectName }
       message: 'Данные отправлены на переобучение',
       title: 'Успешно',
       withCloseButton: true,
-      autoClose: 2000,
+      autoClose: 3000,
+      icon: <IconCheck />,
     });
   }
 
@@ -328,39 +406,46 @@ const Maps: any = ({ result, setResult, reloadFlag, setReloadFlag, projectName }
                 <Accordion.Item value="f1">
                 <Accordion.Control onClick={() => { setAlertIgnore(0); }}>{resultObject[selectedCenter.unom].description}</Accordion.Control>
                   <Accordion.Panel>
-                    {//print all attributes of selected object
-                      Object.keys(resultObject[selectedCenter.unom]).map((key) => {
-                        if (key === 'target') {
-                          return <><b>{key}</b>:<List>
-                            {resultObject[selectedCenter.unom][key].map((target: string) => {
-                              return <List.Item><Stack spacing="xs" align="flex-start">
-                                {target}
-                                <Button onClick={() => deleteJob(selectedCenter.unom, target)}>Удалить работу</Button>
-                              </Stack></List.Item>
-                            })}
-                          </List>
-                            <br />
-                            <Stack align="flex-start">
-                              <MultiSelect data={jobList.filter((job) => !resultObject[selectedCenter.unom][key].includes(job.value))
-                              } value={jobsToAdd} onChange={setJobsToAdd} dropdownPosition="bottom"
-                                label="Выберите работы, которые, на ваш взгляд, следует добавить &nbsp; &nbsp; &nbsp;"
-                              />
-                              <Button onClick={() => { addJobs(selectedCenter.unom) }}>Добавить работы</Button>
-                            </Stack>
-                          </>
-                        } else if (["description", "object_type"].some((element) => element === key)) {
-                          return (<Text>
-                            <b>{key}</b>: {resultObject[selectedCenter.unom][key]}
-                          </Text>
-                          )
-                        }
-                      })}
+                    {/* <Modal opened={modalOpen === item.unom} onClose={closeModal} title="Информация об объекте"
+          id={item.unom}>
+          <ObjectInfo unom={item.unom} />
+          {item.description}
+        </Modal> */}
+                    <Stack align='flex-start'>
+                      {/* <Button onClick={() => openModal(item.unom)}>Информация об объекте. Предыдущие инциденты и работы</Button> */}
+                      <Stack align="flex-start">
+                        <Group>
+                          <Button color={alertIgnore == 1 ? 'red' : "blue"}
+                            onClick={() => {
+                              if (alertIgnore == 1)
+                                setAlertIgnore(2);
+                              deleteElement(selectedCenter.unom)
+                            }}
+                          >Удалить объект</Button>
+                          {(alertIgnore == 1) && <Button onClick={() => { setAlertIgnore(0) }}>Отмена</Button>}
+                        </Group>
+                        {(alertIgnore == 1) && <>
+                          <Text>Вы уверены, что хотите удалить объект? По нему поступило много жалоб.</Text>
+                        </>}
+                      </Stack>
+                      <b>Работы:</b><List>
+                        {resultObject[selectedCenter.unom]['target'].map((target: string) => {
+                          return <List.Item><Stack spacing="xs" align="flex-start">
+                            {target}
+                            <Button onClick={() => deleteJob(selectedCenter.unom, target)}>Удалить работу</Button>
+                          </Stack></List.Item>
+                        })}
+                      </List>
+                      <br />
+                      <Group position='left' grow>
+                        <MultiSelect miw={370} data={jobList.filter((job) => !resultObject[selectedCenter.unom]['target'].includes(job.value))
+                        } value={jobsToAdd} onChange={setJobsToAdd} dropdownPosition="bottom"
+                          placeholder="Выберите работы, которые следует добавить &nbsp; &nbsp; &nbsp;"
+                        />
+                        <Button maw={170} onClick={() => { addJobs(selectedCenter.unom) }}>Добавить работы</Button>
+                      </Group>
+                    </Stack>
                     <br />
-                    <Button onClick={() => deleteElement(selectedCenter.unom)}>Удалить объект</Button>
-                    {(alertIgnore == 1) && <Stack>
-                      <Text>Вы уверены, что хотите удалить объект? По нему поступило много жалоб.</Text>
-                      <Button onClick={() => { setAlertIgnore(2); deleteElement(selectedCenter.unom); }}>Удалить объект</Button>
-                    </Stack>}
                   </Accordion.Panel>
                 </Accordion.Item>
                </Accordion>
@@ -419,7 +504,8 @@ type resultPropsType = {
 };
 
 const Visualization: NextPage = () => {
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
+  const authenticated = (status === "authenticated" || status === "loading");
 
   const router = useRouter();
   const { projectName } = router.query;
@@ -431,7 +517,7 @@ const Visualization: NextPage = () => {
   useEffect(() => {
     async function getResult(projectName: string) {
       if (!session) {
-        await new Promise((resolve) => setTimeout(resolve, 5000));
+        await new Promise((resolve) => setTimeout(resolve, 100));
         setReloadFlag(!reloadFlag);
         return;
       }
@@ -442,6 +528,7 @@ const Visualization: NextPage = () => {
       }).then((res) => { return res.data }).then((res) => { return Papa.parse(
         res, { header: true, dynamicTyping: true }).data.map((item: any) => {
           item.target = (item.target !== "") ? eval(item.target) : [];
+          item.p = (item.p !== "") ? eval(item.p) : [];
           return item;
          }).filter((item: any) => item.unom !== null).sort((a, b) => (a.description > b.description) ? 1 : -1)})
          .catch((err) => { console.log(err); } );
@@ -459,7 +546,7 @@ const Visualization: NextPage = () => {
     <>
       <HeadSimple title="Visualization" />
       <HeaderSimple />
-      <AuthMessage session={session} />
+      <AuthMessage session={authenticated} />
       {session && isLoading && <Title align="center"><Container><Loader variant="dots" /></Container></Title>}
       {session && !isLoading && <Maps result={result} setResult={setResult} reloadFlag={reloadFlag}
         setReloadFlag={setReloadFlag} projectName={projectName} />}

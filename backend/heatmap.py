@@ -11,6 +11,6 @@ def create_heatmap(df: pd.DataFrame, res_path: str, coord=MSK_coord):
     m = folium.Map(MSK_coord, zoom_start=9, attributionControl=False)
 
     # Создание тепловой карты
-    heat_data = [[row['lat'], row['lng']] for index, row in df.iterrows()]
+    heat_data = [[row['lat'], row['lng']] for index, row in df.iterrows() if pd.notna(row['lat']) and pd.notna(row['lng'])]
     HeatMap(heat_data).add_to(m)
     m.save(res_path)

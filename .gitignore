@@ -47,4 +47,4 @@ backend/__pycache__
 fly.toml
 backend/fly.toml
 
-backend/storage/example
+backend/storage/example*

@@ -3,12 +3,12 @@ import Head from "next/head";
 import { Welcome } from '../components/Welcome/Welcome';
 import { HeaderSimple } from "~/components/HeaderSimple";
 
-export const getStaticProps: GetStaticProps<{}> = async () => {
-  return { props: { } };
-};
+// export const getStaticProps: GetStaticProps<{}> = async () => {
+//   return { props: { } };
+// };
 
 const Home: NextPage = () => {
-
+  
   return (
     <>
       <Head>

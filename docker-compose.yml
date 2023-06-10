@@ -1,4 +1,12 @@
 services:
+    postgres:
+        image: postgres:13.3
+        environment:
+            POSTGRES_DB: "db"
+            POSTGRES_USER: "postgres"
+            POSTGRES_PASSWORD: "1234"
+        ports:
+            - "5432:5432"
 
     frontend:
         build: .
@@ -8,6 +16,8 @@ services:
 
     backend:
         build: backend
+        depends_on:
+            - postgres
         restart: always
         ports:
             - "8000:8080"

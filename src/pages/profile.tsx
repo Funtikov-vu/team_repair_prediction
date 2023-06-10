@@ -8,14 +8,15 @@ import { Button, Title, Container, Stack, Table } from "@mantine/core";
 import Link from "next/link";
 import { AuthMessage } from "~/components/AuthMessage";
 
-export const getStaticProps: GetStaticProps<{}> = async () => {
-  return { props: {} };
-};
+// export const getStaticProps: GetStaticProps<{}> = async () => {
+//   return { props: {} };
+// };
 
 const Profile: NextPage = () => {
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
   const [projects, setProjects] = useState<string[]>([]);
-  console.log(projects);
+
+  const authenticated = (status === 'authenticated' || status === 'loading');
 
   useEffect(() => {
     async function getProjects() {
@@ -69,7 +70,7 @@ const Profile: NextPage = () => {
         Выбор проекта
       </Title>
       <br />
-      <AuthMessage session={session} />
+      <AuthMessage session={authenticated} />
       {session && <Container>
         <Stack spacing="md">
           <Button onClick={onSubmit}>Обновить список проектов</Button>

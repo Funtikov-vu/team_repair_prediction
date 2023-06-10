@@ -1,7 +1,7 @@
-import { createStyles, Header, Container, Group, Text, rem, Menu, Button } from '@mantine/core';
+import { createStyles, Header, Container, Group, Text, rem, Menu } from '@mantine/core';
 import { AuthShowcase } from './AuthShowcase';
 import Link from 'next/link';
-import { IconApi, IconArrowsLeftRight, IconBook2, IconMessageCircle, IconPhoto, IconPresentation, IconSearch, IconSettings, IconTrash } from '@tabler/icons-react';
+import { IconApi, IconBook2, IconPresentation } from '@tabler/icons-react';
 
 const useStyles = createStyles((theme) => ({
   header: {
@@ -96,7 +96,7 @@ export function HeaderSimple({ links = defaultLinks }) {
 
     <Menu.Dropdown>
       {/* <Menu.Label>Docs</Menu.Label> */}
-      <Menu.Item icon={<IconApi size={14} />} component='a' href='/api-docs'>API</Menu.Item>
+      <Menu.Item icon={<IconApi size={14} />} component={Link} href='/api-docs' prefetch={true}>API</Menu.Item>
       <Menu.Item icon={<IconBook2 size={14} />} component='a' 
         href='https://docs.google.com/document/d/1Q5_j9p0USTPmeIf2JIoqQxdTch2TvCVS54WjHcjOW_g'>Документация</Menu.Item>
       <Menu.Item icon={<IconPresentation size={14} />} component='a' 

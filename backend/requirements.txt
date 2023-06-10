@@ -6,3 +6,7 @@ pandas==2.0.1
 pydantic==1.10.7
 gunicorn
 openpyxl
+sqlalchemy
+psycopg2-binary
+scikit-learn
+tqdm
