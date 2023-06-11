@@ -149,9 +149,11 @@ const Data: NextPage = () => {
       }).catch((err) => {
         notifications.show({
           title: 'Ошибка',
-          message: 'Проверьте формат данных',
+          message: 'Проверьте формат данных. Файлы должны содержать не более 100000 строк',
           color: 'red',
           icon: <IconExclamationCircle />,
+          withCloseButton: true,
+          autoClose: 5000,
         });
         setIsButtonClicked(false);
       } );
@@ -165,7 +167,7 @@ const Data: NextPage = () => {
         message: 'Данные успешно загружены в базу данных',
         icon: <IconDatabaseImport />,
         withCloseButton: true,
-        autoClose: 2000,
+        autoClose: 3000,
       });
       form_to_db.reset();
     }

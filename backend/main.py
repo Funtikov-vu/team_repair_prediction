@@ -3,7 +3,7 @@ import json
 import sqlite3
 from time import sleep
 from typing import Annotated, Literal
-from fastapi import Depends, FastAPI, File, Form, UploadFile, Request
+from fastapi import Depends, FastAPI, File, Form, HTTPException, UploadFile, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
@@ -68,10 +68,11 @@ async def create_project_from_db(projectName: str = Form(...),
             unoms.file.seek(0)
             unoms_df = pd.read_csv(unoms.file, dtype={'UNOM': int}, usecols=['UNOM']) if unoms else None
 
-    unom_column = 'unom' if 'unom' in unoms_df.columns else 'UNOM'
+    if unoms:
+        unom_column = 'unom' if 'unom' in unoms_df.columns else 'UNOM'
     for i, dataset_type in enumerate(DATASET_TYPES, start=1):
         df = pd.read_sql_table(dataset_type, engine)
-        if unoms_df.shape[0] > 0:
+        if unoms and unoms_df.shape[0] > 0:
             df = df[df['unom'].isin(unoms_df[unom_column])]
         df.to_csv(os.path.join("storage", projectName, f"{i}"), index=False, 
                   header=db_models.DF_COLUMNS_MAPPING[dataset_type])
@@ -108,11 +109,6 @@ async def get_project_list():
 @app.get("/projects/{projectName}")
 async def get_project(projectName: str):
     return next(os.walk(os.path.join("storage", projectName)))[2]
-
-
-@app.get("/projects/{projectName}/{filename}")
-async def get_file(projectName: str, filename: str):
-    return FileResponse(os.path.join("storage", projectName, filename))
 
 
 def generate_pred(projectName: str, corrected: bool = False):
@@ -166,6 +162,14 @@ async def delete(projectName: str):
     import shutil
     shutil.rmtree(os.path.join("storage", projectName))
     return {"success": True}
+
+
+@app.get("/files")
+async def get_file(projectName: str, file: str):
+    if not os.path.exists(os.path.join("storage", projectName, file)):
+        #return error
+        raise HTTPException(status_code=404, detail="Item not found")
+    return FileResponse(os.path.join("storage", projectName, file))
 
 
 @app.post("/markToRetrain/{projectName}")

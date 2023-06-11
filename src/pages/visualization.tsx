@@ -45,26 +45,23 @@ const WORK_WEIGHTS = {
 }
 
 const alertFeature: string = "appeals_count";
-const alertFeatureThreshold: number = 300;
+const alertFeatureThreshold: number = 200;
 
 const alertFeatureJobDeletion: string = "appeals_count";
 const alertFeatureThresholdJobDeletion: number = 300;
 
 const getObjectWeight = (object: any) => {
-  // check if object has "p" key
-  if (object.hasOwnProperty('p'))
-    // return sum object[p][i] * WORK_WEIGHTS[object['target'][i]]
+  try {
     return object['p'].reduce((acc, cur, i) => acc + cur * WORK_WEIGHTS[object['target'][i]], 0);
-  return object[alertFeature];
+  } catch {
+    console.log(object);
+    return object[alertFeature]; 
+  }
+  
 }
 
 const jobList = jobs.map((item) => {
     return { label: item.substring(0, 100), value: item }}).sort((a, b) => a.label.localeCompare(b.label));
-
-//convert filters to array
-const filtersArray = Object.keys(filters).map((key) => {
-  return { name: key, type: filters[key].type, bounds: filters[key].bounds }
-}).sort((a, b) => (a.type < b.type) ? 1 : -1);
 
 const containerStyle = {
   width: '400px',
@@ -77,8 +74,14 @@ const center = {
 };
 
 
-const Maps: any = ({ result, setResult, reloadFlag, setReloadFlag, projectName }) => {
+const Maps: any = ({ result, setResult, reloadFlag, setReloadFlag, projectName, filterBounds, setFilterBounds,
+  filterBoundsLimits, setFilterBoundsLimits }) => {
   const onLoad = (marker: any) => {}
+
+  //convert filters to array
+  const filtersArray = Object.keys(filterBoundsLimits).map((key) => {
+    return { name: key, type: filterBoundsLimits[key].type, bounds: filterBoundsLimits[key].bounds }
+  }).sort((a, b) => (a.type < b.type) ? 1 : -1);
 
   if (!result)
     return (<></>);
@@ -86,29 +89,18 @@ const Maps: any = ({ result, setResult, reloadFlag, setReloadFlag, projectName }
   const [selectedCenter, setSelectedCenter] = useState(null);
   const [jobsToAdd, setJobsToAdd] = useState([]);
   const [changes, setChanges] = useState([]);
-  const [filterBounds, setFilterBounds] = useState(filters);
   const [alertIgnore, setAlertIgnore] = useState(0);
   const [stringToSearch, setStringToSearch] = useState('');
   const [top10, setTop10] = useState(false);
-  // const [opened, { open, close }] = useDisclosure(false);
-  const [modalOpen, setModalOpen] = useState(-1);
-
-  const openModal = (unom) => {
-    setModalOpen(unom);
-  }
-
-  const closeModal = () => {
-    setModalOpen(-1);
-  }
 
   let filteredResults = result.filter((item: any) => (Object.keys(filterBounds).map((key) => {
-    return { name: key, type: filters[key].type, bounds: filterBounds[key].bounds }
+    return { name: key, type: filterBounds[key].type, bounds: filterBounds[key].bounds }
   })
     .map(filter => (filter.type === 'float') ? (item[filter.name] >= filter.bounds[0] && item[filter.name] <= filter.bounds[1]) : (filter.bounds.includes(item[filter.name])))).every(item => item === true)
-  );
+  ).sort((a, b) => (a.description > b.description) ? 1 : -1).sort((a, b) => (getObjectWeight(a) < getObjectWeight(b)) ? 1 : -1);
 
   if (top10) {
-    filteredResults = result.sort((a, b) => (getObjectWeight(a) < getObjectWeight(b)) ? 1 : -1).slice(0, 10);
+    filteredResults = filteredResults.slice(0, 10);
   }
   
   if (stringToSearch.length > 1) {
@@ -135,13 +127,13 @@ const Maps: any = ({ result, setResult, reloadFlag, setReloadFlag, projectName }
   }
 
   const [currentFilter, setCurrentFilter] = useState(null);
-  
+  console.log(filterBoundsLimits);
   const filterElements = filtersArray.map((filter) => {
     return (<>
       { (filter.type === 'float') &&
         <>
           <Text>{filter.name}</Text>
-          <RangeSlider key={filter.name} min={filter.bounds[0]} max={filter.bounds[1]} 
+        <RangeSlider key={filter.name} min={filter.bounds[0]} max={filter.bounds[1]} 
             minRange={0.1} onChangeEnd={(e) => changeFilterBounds(filter.name, e)}
             defaultValue={filter.bounds}
             name={currentFilter}
@@ -149,7 +141,7 @@ const Maps: any = ({ result, setResult, reloadFlag, setReloadFlag, projectName }
         </>
       }
       { (filter.type === 'string') &&
-          <MultiSelect searchable limit={20} key={filter.name} data={filter.bounds} label={filter.name} value={filterBounds[filter.name]['bounds']}
+        <MultiSelect searchable limit={20} key={filter.name} data={filter.bounds} label={filter.name} value={filterBounds[filter.name]['bounds']}
             onChange={(e) => changeFilterBounds(filter.name, e)}
             defaultValue={filter.bounds}
             name={currentFilter}
@@ -185,6 +177,10 @@ const Maps: any = ({ result, setResult, reloadFlag, setReloadFlag, projectName }
   }
 
   const deleteJob = (unom: number, target: string) => {
+    // find index of object in array resultObject[unom].target
+    let index = resultObject[unom].target.indexOf(target);
+    // delete element from array resultObject[unom].p
+    resultObject[unom].p.splice(index, 1);
     let newResult = resultObject[unom].target.filter((item: any) => item !== target);
     if (newResult.length === 0) {
       deleteElement(unom);
@@ -196,61 +192,22 @@ const Maps: any = ({ result, setResult, reloadFlag, setReloadFlag, projectName }
   }
 
   const addJobs = (unom: number) => {
-    let newResult = resultObject[unom].target.concat(jobsToAdd);
+    let newResult = jobsToAdd.concat(resultObject[unom].target);
+    //mean of array p
+    const prob = resultObject[unom].p.reduce((a, b) => a + b, 0) / resultObject[unom].p.length;
+    let newP = [prob].concat(resultObject[unom].p);
     resultObject[unom].target = newResult;
+    resultObject[unom].p = newP;
     setResult(Object.values(resultObject));
     setJobsToAdd([]);
   }
-
-  // const ObjectInfo = ({unom}) => {
-  //   const [objectInfo, setObjectInfo] = useState(null);
-
-  //   useEffect(() => {
-  //     async function fetchData() {
-  //       const objectInfo = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/database/dataset/objects/${unom}`).then
-  //         (response => response.json());
-  //       setObjectInfo(objectInfo.parse());
-  //       console.log(objectInfo.parse());
-  //     }
-  //     if (modalOpen === unom)
-  //       fetchData();
-  //   }, [modalOpen]);
-
-  //   if (modalOpen !== unom)
-  //     return <></>;
-
-  //   return (
-  //     <Table>
-  //       <thead>
-  //         <tr>
-  //           <th>Параметр</th>
-  //           <th>Значение</th>
-  //         </tr>
-  //       </thead>
-  //       <tbody>
-  //         {Object.entries(objectInfo).map(([key, value]) => (
-  //           <tr>
-  //             <td>{key}</td>
-  //             <td>{value}</td>
-  //           </tr>
-  //         ))}
-  //       </tbody>
-  //     </Table>
-  //   );
-  // }
 
   //object list with accordion
   const objectList = filteredResults.map((item: any) => (
     <Accordion.Item value={"f" + item.unom}>
       <Accordion.Control onClick={() => { setAlertIgnore(0); }}>{item.description}</Accordion.Control>
       <Accordion.Panel>
-        {/* <Modal opened={modalOpen === item.unom} onClose={closeModal} title="Информация об объекте"
-          id={item.unom}>
-          <ObjectInfo unom={item.unom} />
-          {item.description}
-        </Modal> */}
         <Stack align='flex-start'>
-        {/* <Button onClick={() => openModal(item.unom)}>Информация об объекте. Предыдущие инциденты и работы</Button> */}
         <Stack align="flex-start">
           <Group>
             <Button color={alertIgnore == 1 ? 'red' : "blue"} 
@@ -309,7 +266,9 @@ const Maps: any = ({ result, setResult, reloadFlag, setReloadFlag, projectName }
     const formData = new FormData();
     //convert result to FormData csv file and append to formData
     const csvRows = [];
-    const headers = Object.keys(result[0]);
+    let headers = Object.keys(result[0]);
+    //swap last two elements
+    [headers[headers.length - 1], headers[headers.length - 2]] = [headers[headers.length - 2], headers[headers.length - 1]];
     csvRows.push(headers.join(','));
     for (const row of result) {
       const values = headers.map(header => {
@@ -380,7 +339,7 @@ const Maps: any = ({ result, setResult, reloadFlag, setReloadFlag, projectName }
           <Stack align='flex-start'>
             <h3 style={{marginBottom: -5}}>Управление</h3>
             <Group>
-              <CSVLink data={filteredResults} filename="results.csv" 
+              <CSVLink data={filteredResults.map(({p, ...rest}) => rest)} filename="results.csv" 
                 style={{ textDecoration: "none", color: "white" }} onclick="location.href='#'"><Button>Скачать CSV</Button></CSVLink>
               <form onSubmit={uploadCorrectedResults}><Button type="submit">Сохранить на сервере</Button></form>
             </Group>
@@ -513,6 +472,8 @@ const Visualization: NextPage = () => {
   const [result, setResult] = useState<any>(null);
   const [isLoading, setLoading] = useState(true);
   const [reloadFlag, setReloadFlag] = useState(false);
+  const [filterBounds, setFilterBounds] = useState(filters);
+  const [filterBoundsLimits, setFilterBoundsLimits] = useState(filters);
 
   useEffect(() => {
     async function getResult(projectName: string) {
@@ -528,12 +489,37 @@ const Visualization: NextPage = () => {
       }).then((res) => { return res.data }).then((res) => { return Papa.parse(
         res, { header: true, dynamicTyping: true }).data.map((item: any) => {
           item.target = (item.target !== "") ? eval(item.target) : [];
-          item.p = (item.p !== "") ? eval(item.p) : [];
+          try {
+            item.p = (item.p !== "") ? eval(item.p) : [];
+            // make p elements float
+            item.p = item.p.map((p: any) => parseFloat(p));
+          } catch (e) {}
           return item;
          }).filter((item: any) => item.unom !== null).sort((a, b) => (a.description > b.description) ? 1 : -1)})
          .catch((err) => { console.log(err); } );
+
+      // append file="bounds.json" to the request to get bounds
+      const bounds = await axios({
+        method: 'GET', url: `${process.env.NEXT_PUBLIC_BACKEND_URL}/files?file=bounds.json&projectName=${projectName}`,
+        headers: {
+          "Content-Type": "application/json",
+        },
+      }).then((res) => { return res.data }).then((res) => { 
+        // {"appeals_count": {"type": "float", "bounds": ["116", "591"]}, "works_count": {"type": "float", "bounds": ["0", "5"]}, "Серия проекта": {"type": "string", "bounds": ["П-3/16", "МГ-601", "П-30"]}}
+        //convert bounds to int
+        for (let key in res) {
+          if (res[key].type == "float") {
+            res[key].bounds = res[key].bounds.map((item: string) => parseFloat(item));
+          }
+        }
+        console.log(res);
+        return res 
+      }).catch((err) => { console.log(err); } );
+
       if (result) {
         setResult(result);
+        setFilterBounds(bounds);
+        setFilterBoundsLimits(bounds);
         setLoading(false);
       } else {
         setReloadFlag(!reloadFlag);
@@ -549,7 +535,8 @@ const Visualization: NextPage = () => {
       <AuthMessage session={authenticated} />
       {session && isLoading && <Title align="center"><Container><Loader variant="dots" /></Container></Title>}
       {session && !isLoading && <Maps result={result} setResult={setResult} reloadFlag={reloadFlag}
-        setReloadFlag={setReloadFlag} projectName={projectName} />}
+        setReloadFlag={setReloadFlag} projectName={projectName} filterBounds={filterBounds} setFilterBounds={setFilterBounds}
+        filterBoundsLimits={filterBoundsLimits} setFilterBoundsLimits={setFilterBoundsLimits} />}
     </>
   );
 };

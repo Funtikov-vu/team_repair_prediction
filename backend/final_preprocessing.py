@@ -261,13 +261,13 @@ def get_final_x_by_input(houses_postprocess_source, appeals_postprocess_source, 
             config = json.load(file)
         start = (datetime.strptime(eval(config["dates"])[0], "%Y-%m-%dT%H:%M:%S.%fZ") - datetime_start).total_seconds() / (3600 * 24)
         end = (datetime.strptime(eval(config["dates"])[1], "%Y-%m-%dT%H:%M:%S.%fZ") - datetime_start).total_seconds() / (3600 * 24)
-        x, final_features = generate_x(houses_df_new, 0, time_max)
+        x, _ = generate_x(houses_df_new, 0, time_max)
         # x["x_length_time_period"] = time_max - 0
-        x["x_length_time_period"] = 100
+        x["x_length_time_period"] = 362
         #x["time_dist_period"] = start - time_max
-        x["time_dist_period"] = 10
+        x["time_dist_period"] = 0
         x["y_length_time_period"] = end - start
-        x["y_length_time_period"] = 100
+        x["y_length_time_period"] = 367
         x.to_csv(outname, index=False)
     if not os.path.isfile(resultsname):
         x = pd.read_csv(outname)
@@ -286,7 +286,13 @@ def get_final_x_by_input(houses_postprocess_source, appeals_postprocess_source, 
         
         preds = []
         ps = []
+        
         x_for_pred = x[base_features + final_features + time_features].fillna(-9999)
+        from pandas.api.types import is_float_dtype
+        for feature in base_cat_features:
+            if is_float_dtype(x_for_pred[feature]):
+                x_for_pred[feature] = x_for_pred[feature].astype(int)
+
         x_for_pred = x_for_pred.replace(False, 0)
         
         for i in range(len(all_works)):
@@ -296,7 +302,7 @@ def get_final_x_by_input(houses_postprocess_source, appeals_postprocess_source, 
             else:
                 model = CatBoostClassifier()      # parameters not required.
                 model.load_model(f'{models_source}/{i}')
-                preds.append((model.predict_proba(x_for_pred)[:, 1] > EPS_LOC[i] / 1000).astype(int))
+                preds.append((model.predict_proba(x_for_pred)[:, 1] > EPS_LOC[i] / (500 if len(x) > 100 else 10000)).astype(int))
                 ps.append(model.predict_proba(x_for_pred)[:, 1])
         target = []
         ps_target = []
